@@ -1,4 +1,3 @@
-Here's a **Gen Z-style README** for your **ClipSync Deep Fake Audio Detection** project:  
 
 ---
 
