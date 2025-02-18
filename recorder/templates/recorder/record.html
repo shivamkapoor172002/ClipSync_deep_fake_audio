@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Recorder - {{ username }}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-dark: #4338CA;
+            --danger: #EF4444;
+            --success: #10B981;
+            --background: #F3F4F6;
+            --card: #FFFFFF;
+            --text: #1F2937;
+            --text-secondary: #6B7280;
+            --border-radius: 12px;
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 12px -1px rgba(0, 0, 0, 0.15);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--card);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .record-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: white;
+            background-color: var(--primary);
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            width: 100%;
+            max-width: 300px;
+            margin: 2rem auto;
+        }
+
+        .record-button:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .record-button.recording {
+            background-color: var(--danger);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .timer {
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-align: center;
+            margin: 1rem 0;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .progress-bar {
+            background-color: #E5E7EB;
+            border-radius: 9999px;
+            height: 8px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background-color: var(--primary);
+            transition: width 0.1s linear;
+        }
+
+        .recordings-list {
+            margin-top: 2rem;
+        }
+
+        .recording-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background: var(--card);
+            border-radius: var(--border-radius);
+            margin-bottom: 1rem;
+            transition: var(--transition);
+        }
+
+        .recording-item:hover {
+            transform: translateX(4px);
+        }
+
+        .recording-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .recording-checkbox {
+            width: 1.2rem;
+            height: 1.2rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: #6B7280;
+            color: white;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text);
+            text-decoration: none;
+            margin-bottom: 2rem;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .back-link:hover {
+            color: var(--primary);
+        }
+
+        audio {
+            border-radius: var(--border-radius);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .recording-item {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{% url 'recorder:home' %}" class="back-link">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back to Dashboard
+        </a>
+
+        <div class="card">
+            <h1 class="text-3xl font-bold mb-6">Recording Studio - {{ username }}</h1>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="total-recordings">{{ total_recordings }}</div>
+                    <div class="stat-label">Total Recordings</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="total-duration">{{ total_duration }}</div>
+                    <div class="stat-label">Total Duration (sec)</div>
+                </div>
+            </div>
+
+            <button id="recordButton" class="record-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="4"/>
+                </svg>
+                Start Recording
+            </button>
+
+            <div id="timer" class="timer">00:00</div>
+            <div id="status" class="text-center text-gray-600"></div>
+
+            <div id="progressBar" class="progress-bar">
+                <div id="progressBarFill" class="progress-bar-fill"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-2xl font-bold">Recent Recordings</h2>
+                <div class="controls">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="selectAll" class="recording-checkbox">
+                        <span>Select All</span>
+                    </label>
+                    <!--<button id="clearSelected" class="btn btn-danger">Clear Selected</button>-->
+                    <!--<button id="clearAll" class="btn btn-secondary">Clear All</button>-->
+                </div>
+            </div>
+
+            <div id="recordings" class="recordings-list">
+                {% for recording in recordings %}
+                <div class="recording-item" data-id="{{ recording.id }}">
+                    <div class="recording-info">
+                        <input type="checkbox" class="recording-checkbox">
+                        <div>
+                            <div class="font-medium">Segment {{ recording.clip_number }}</div>
+                            <div class="text-sm text-gray-500">
+                                {{ recording.timestamp|date:"Y-m-d H:i:s" }}
+                                <span class="ml-2">({{ recording.duration|floatformat:1 }}s)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <audio controls src="{{ recording.audio_file.url }}"></audio>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Your existing JavaScript code remains the same
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+        let timerInterval;
+        let startTime;
+        let segmentStartTime;
+        let segmentCount = 0;
+        let currentSegmentDuration;
+
+        const recordButton = document.getElementById('recordButton');
+        const timerDisplay = document.getElementById('timer');
+        const statusDisplay = document.getElementById('status');
+        const progressBarFill = document.getElementById('progressBarFill');
+
+        function getRandomDuration() {
+            return Math.floor(Math.random() * (10000 - 5000 + 1) + 5000);
+        }
+
+        async function setupRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    const base64Data = await blobToBase64(audioBlob);
+                    const actualDuration = (Date.now() - segmentStartTime) / 1000;
+
+                    try {
+                        const response = await fetch('{% url "recorder:save_recording" %}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': getCookie('csrftoken')
+                            },
+                            body: JSON.stringify({
+                                audio: base64Data,
+                                username: '{{ username }}',
+                                duration: actualDuration
+                            })
+                        });
+
+                        const data = await response.json();
+                        if (data.success) {
+                            document.getElementById('total-recordings').textContent = data.total_recordings;
+                            document.getElementById('total-duration').textContent = data.total_duration;
+                            refreshRecordingsList();
+                            segmentCount++;
+
+                            if (isRecording) {
+                                startNewSegment();
+                            }
+                        } else {
+                            statusDisplay.textContent = 'Error saving recording segment';
+                        }
+                    } catch (error) {
+                        console.error('Error saving recording:', error);
+                        statusDisplay.textContent = 'Error saving recording segment';
+                    }
+                };
+
+                statusDisplay.textContent = 'Ready to record';
+                recordButton.disabled = false;
+
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                statusDisplay.textContent = 'Error accessing microphone';
+                recordButton.disabled = true;
+            }
+        }
+
+        function startNewSegment() {
+            audioChunks = [];
+            segmentStartTime = Date.now();
+            currentSegmentDuration = getRandomDuration();
+            mediaRecorder.start();
+            progressBarFill.style.width = '0%';
+
+            statusDisplay.textContent = `Recording segment ${segmentCount + 1} (${(currentSegmentDuration/1000).toFixed(1)}s)`;
+
+            setTimeout(() => {
+                if (isRecording && mediaRecorder.state === 'recording') {
+                    mediaRecorder.stop();
+                }
+            }, currentSegmentDuration);
+        }
+
+        function updateTimer() {
+            const totalElapsed = Math.floor((Date.now() - startTime) / 1000);
+            const segmentElapsed = Date.now() - segmentStartTime;
+            const totalMinutes = Math.floor(totalElapsed / 60);
+            const totalSeconds = totalElapsed % 60;
+
+            timerDisplay.textContent = `${totalMinutes.toString().padStart(2, '0')}:${totalSeconds.toString().padStart(2, '0')}`;
+
+            const progress = (segmentElapsed / currentSegmentDuration) * 100;
+            progressBarFill.style.width = `${Math.min(progress, 100)}%`;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupRecording();
+
+            recordButton.addEventListener('click', async () => {
+                if (!mediaRecorder) {
+                    await setupRecording();
+                    return;
+                }
+
+                if (!isRecording) {
+                    isRecording = true;
+                    segmentCount = 0;
+                    startTime = Date.now();
+                    recordButton.textContent = 'Stop Recording';
+                    recordButton.classList.add('recording');
+                    timerInterval = setInterval(updateTimer, 100);
+                    startNewSegment();
+                } else {
+                    isRecording = false;
+                    recordButton.textContent = 'Start Recording';
+                    recordButton.classList.remove('recording');
+                    clearInterval(timerInterval);
+                    if (mediaRecorder.state === 'recording') {
+                        mediaRecorder.stop();
+                    }
+                    timerDisplay.textContent = '00:00';
+                    statusDisplay.textContent = 'Ready to record';
+                    progressBarFill.style.width = '0%';
+                }
+            });
+
+            const selectAll = document.getElementById('selectAll');
+            const clearSelected = document.getElementById('clearSelected');
+            const clearAll = document.getElementById('clearAll');
+
+            selectAll.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.recording-checkbox');
+                checkboxes.forEach(checkbox => checkbox.checked = this.checked);
+            });
+
+            clearSelected.addEventListener('click', async function() {
+                const selectedItems = document.querySelectorAll('.recording-item .recording-checkbox:checked');
+                if (selectedItems.length === 0) {
+                    alert('Please select recordings to clear');
+                    return;
+                }
+
+                if (confirm('Are you sure you want to clear the selected recordings?')) {
+                    const ids = Array.from(selectedItems).map(checkbox =>
+                        checkbox.closest('.recording-item').dataset.id
+                    );
+                    await clearRecordings(ids);
+                }
+            });
+
+            clearAll.addEventListener('click', async function() {
+                if (confirm('Are you sure you want to clear all recordings?')) {
+                    await clearRecordings([]);
+                }
+            });
+        });
+
+        async function refreshRecordingsList() {
+            try {
+                const response = await fetch(window.location.href);
+                const text = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, 'text/html');
+                const newRecordings = doc.getElementById('recordings');
+                document.getElementById('recordings').innerHTML = newRecordings.innerHTML;
+            } catch (error) {
+                console.error('Error refreshing recordings list:', error);
+            }
+        }
+
+        async function clearRecordings(ids) {
+            try {
+                const formData = new FormData();
+                ids.forEach(id => formData.append('recording_ids', id));
+
+                const username = '{{ username }}';
+                const response = await fetch(`/clear/${encodeURIComponent(username)}/`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    credentials: 'same-origin'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    if (ids.length > 0) {
+                        ids.forEach(id => {
+                            const element = document.querySelector(`.recording-item[data-id="${id}"]`);
+                            if (element) element.remove();
+                        });
+                    } else {
+                        document.getElementById('recordings').innerHTML = '';
+                    }
+
+                    document.getElementById('total-recordings').textContent = data.total_recordings || '0';
+                    document.getElementById('total-duration').textContent = data.total_duration || '0.0';
+                    document.getElementById('selectAll').checked = false;
+
+                    alert(data.message || 'Successfully cleared recordings');
+                } else {
+                    throw new Error(data.error || 'Failed to clear recordings');
+                }
+            } catch (error) {
+                console.error('Error clearing recordings:', error);
+                alert(`Error clearing recordings: ${error.message}`);
+            }
+        }
+
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>
